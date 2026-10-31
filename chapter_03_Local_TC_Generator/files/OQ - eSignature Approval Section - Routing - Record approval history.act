@@ -1,0 +1,562 @@
+# #################################################################################################
+# SCENARIO: 	                    																										
+#          This test script tests the functionality of recording phases approval in the eSignature 
+#          Subform when routing documents
+# #################################################################################################
+
+SET_RELIANCE_URL
+USER1_LOGIN
+
+# #################################################################################################
+# TC_1: Check that eSignature section will be updated  when 
+#       "Update electronic signature section in the following phases" contains a defined phase
+# #################################################################################################
+# Precondition(s):
+#  - Enable "Force Authentication" in "VALIDATION_DOCUMENT" form setting
+#  - Select "Authenticate only when routing" checkbox	
+#  - Add The Draf and the Validation Review phases to "ENGINE_FORM_APPROVAL_PHASES" field 	 											
+# #################################################################################################
+
+OPEN_APPLICATION "ENGINE"
+OPEN_SETTING_DOCUMENT "ENGINE_FORM_SETTINGS"  "VALIDATION_DOCUMENT"
+StoreFieldValueIntoVariable	"ENGINE_HISTORY_TYPE"	"V1"
+SelectOption "ENGINE_HISTORY_TYPE" "Force Authentication"
+SelectRadioByDisplayName  "ENGINE_FORM_AUTHENTICATION_OPTIONS" "Authenticate only when routing"
+OPEN_KEYWORD_DIALOG	"ENGINE_FORM_APPROVAL_PHASES"
+SELECT_MULTIPLE_KEYWORD_OPTION  "Draft (VALIDATION_TEST_DRAFT)"
+ADD_KEYWORD_OPTION
+SELECT_MULTIPLE_KEYWORD_OPTION "Validation Review (VALIDATION_TEST_VALIDATION_REVIEW)"
+ADD_KEYWORD_OPTION
+CLOSE_KEYWORD_DIALOG
+CLICK_ACTION  "Save_&_Close"
+CHECK_ERRORS
+
+# #################################################################################################
+# TC_1.1: Check phase approval when sending the document Forward 							 
+# Expected Result(s):							                                                                  
+#				1. eSignature section will be updated with User name, Phase name, and Date   																																																																									
+# #################################################################################################
+
+SWITCH_TO_USER7
+VALIDATION_CREATE_PENDING_DOCUMENT	"Check phase approval when sending the document Forward"	"Sending-Forward"
+
+# Check Electronic Signature section fields data 
+OpenDocumentByKey "Sending-Forward"
+OPEN_DOCUMENT_TAB "ACCESS_CONTROL_TAB"
+CheckFormElementNotPresent  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_0_HIDDEN"
+CheckFormElementNotPresent  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_0_HIDDEN"
+CheckFormElementNotPresent "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_0_HIDDEN" 
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "0"
+ROUTE_TO_PHASE_WITH_AUTHENTICATION "PhaseName_Validation_Review" "EtQ-User7" "etq-user7"
+
+# Check Electronic Signature subform fields data 
+OpenDocumentByKey "Sending-Forward"
+OPEN_DOCUMENT_TAB "ACCESS_CONTROL_TAB"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_0_HIDDEN" "D-User7"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_0_HIDDEN" "Draft"
+CheckFormElementEqualsCurrentDate  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_0_HIDDEN" "1"
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "1"
+CLICK_ACTION  "Cancel"
+CHECK_ERRORS
+
+# #################################################################################################
+# TC_1.2: Check phase approval when using the Assign to Next Person 						
+# Expected Result(s):							                                                                 
+#			1. eSignature subform will be updated with User name, Phase name, and Date when assign to next 
+#        person is used.
+#		  2. eSignature subform will be updated with User name, Phase name, and Date when document is 
+#        routed to next phase.  																																																																									
+# #################################################################################################
+
+VALIDATION_CREATE_PENDING_DOCUMENT	"Check phase approval when using the Assign to Next Person"	"Assign-NextPerson"
+
+OpenDocumentByKey "Assign-NextPerson"
+OPEN_DOCUMENT_TAB "ACCESS_CONTROL_TAB"
+CheckFormElementNotPresent   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_0_HIDDEN"
+CheckFormElementNotPresent   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_0_HIDDEN" 
+CheckFormElementNotPresent  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_0_HIDDEN"
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "0"
+
+CLICK_PHASE	"PhaseName_Validation_Review"
+ADD_USER_TO_NAMES_FIELD	"PHASE_DIALOG_ASSIGN_TO"	"D-User7"
+ADD_USER_TO_NAMES_FIELD	"PHASE_DIALOG_ASSIGN_TO"	"D-User8"
+CLICK_ACTION "phase_dialog_ok"
+CHECK_ERRORS
+SET_PASSWORD "etq-user7"
+Submit
+CHECK_ERRORS
+
+OpenDocumentByKey "Assign-NextPerson"
+OPEN_DOCUMENT_TAB "ACCESS_CONTROL_TAB"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_0_HIDDEN" "D-User7"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_0_HIDDEN" "Draft"
+CheckFormElementEqualsCurrentDate  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_0_HIDDEN" "1"
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "1"
+ClickLinkWithText "Assign to Next Person"
+CHECK_ERRORS
+CLICK_ACTION "assign_to_next_dialog_ok"
+CHECK_ERRORS
+SET_PASSWORD "etq-user7"
+Submit
+CHECK_ERRORS
+
+# Check Electronic Signature subform fields data - Assign to Next Person is recorded
+SWITCH_TO_USER8
+OPEN_APPLICATION	"VALIDATION"
+OpenDocumentByKey "Assign-NextPerson"
+ADD_USER_TO_NAMES_FIELD	"ETQ$APPROVERS"	"EtQ-User8"
+OPEN_DOCUMENT_TAB "ACCESS_CONTROL_TAB"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_1_HIDDEN" "D-User7"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_1_HIDDEN" "Validation Review"
+CheckFormElementEqualsCurrentDate  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_1_HIDDEN" "1"
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "2"
+
+# Route to next phase and Check Electronic Signature subform fields data
+CLICK_PHASE "PhaseName_Initial_Approval"
+CLICK_ACTION  "phase_dialog_ok"
+CHECK_ERRORS
+SET_PASSWORD "etq-user8"
+Submit
+CHECK_ERRORS
+
+OpenDocumentByKey "Assign-NextPerson"
+OPEN_DOCUMENT_TAB "ACCESS_CONTROL_TAB"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_1_HIDDEN" "D-User7"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_1_HIDDEN" "Validation Review"
+CheckFormElementEqualsCurrentDate  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_1_HIDDEN" "1"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_2_HIDDEN" "D-User8"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_2_HIDDEN" "Validation Review"
+CheckFormElementEqualsCurrentDate  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_2_HIDDEN" "1"
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "3"
+CLICK_ACTION  "Cancel"
+CHECK_ERRORS
+
+# #################################################################################################
+# TC_1.3: Check phase approval when using Resend action						
+# Expected Result(s):							                                                                 
+#			1. eSignature subform will be updated with User name, Phase name, and Date of the last user 
+#        used "Resend" action.  																																																																									
+# #################################################################################################
+# Precondition(s):	
+#              - Enable "Allow resend to users within the phase" option on "Validation Review" phase													
+# #################################################################################################
+
+SWITCH_TO_USER1
+OPEN_APPLICATION "ENGINE"
+OPEN_SETTING_DOCUMENT "ENGINE_PHASE_SETTINGS"  "VALIDATION_TEST_VALIDATION_REVIEW"
+OPEN_DOCUMENT_TAB "ROUTING_TAB"
+SELECT_CHECKBOX "ENGINE_ALLOW_RESEND"
+OPEN_DOCUMENT_TAB "BASIC_TAB"
+SetFormElement	"ENGINE_ESIGNATURE_MEANING_VALUE_TEXT"	"I reviewed this document."
+
+
+CLICK_ACTION  "Save_&_Close"
+CHECK_ERRORS
+
+# #################################################################################################
+# Start TC_1.3:																																	
+# #################################################################################################
+
+SWITCH_TO_USER7
+VALIDATION_CREATE_PENDING_DOCUMENT	"Check phase approval when using Resend action"	"Resend-Action"
+OpenDocumentByKey "Resend-Action"
+OPEN_DOCUMENT_TAB "ACCESS_CONTROL_TAB"
+CheckFormElementNotPresent   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_0_HIDDEN"
+CheckFormElementNotPresent   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_0_HIDDEN" 
+CheckFormElementNotPresent  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_0_HIDDEN"
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "0"
+
+CLICK_PHASE	"PhaseName_Validation_Review"
+ADD_USER_TO_NAMES_FIELD	"PHASE_DIALOG_ASSIGN_TO"	"D-User7"
+ADD_USER_TO_NAMES_FIELD	"PHASE_DIALOG_ASSIGN_TO"	"D-User8"
+CLICK_ACTION "phase_dialog_ok"
+CHECK_ERRORS
+SET_PASSWORD "etq-user7"
+Submit
+CHECK_ERRORS
+
+OpenDocumentByKey "Resend-Action"
+OPEN_DOCUMENT_TAB "ACCESS_CONTROL_TAB"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_0_HIDDEN" "D-User7"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_0_HIDDEN" "Draft"
+CheckFormElementEqualsCurrentDate  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_0_HIDDEN" "1"
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "1"
+ClickLinkWithText "Assign to Next Person"
+CHECK_ERRORS
+CLICK_ACTION "assign_to_next_dialog_ok"
+CHECK_ERRORS
+SET_PASSWORD "etq-user7"
+Submit
+
+# Check Electronic Signature subform fields data - Assign to Next Person is recorded
+SWITCH_TO_USER8
+OPEN_APPLICATION	"VALIDATION"
+OpenDocumentByKey "Resend-Action"
+OPEN_DOCUMENT_TAB "ACCESS_CONTROL_TAB"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_1_HIDDEN" "D-User7"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_1_HIDDEN" "Validation Review"
+CheckFormElementEqualsCurrentDate  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_1_HIDDEN" "1"
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "2"
+
+# Use "Resend" action and Check Electronic Signature subform fields data 
+CLICK_ACTION "RESEND"
+CHECK_ERRORS
+SetFormElement "DIALOG_COMMENT" "Resend"
+CLICK_ACTION "resend_dialog_ok"
+CHECK_ERRORS
+SET_PASSWORD "etq-user8"
+Submit
+CHECK_ERRORS
+
+OpenDocumentByKey "Resend-Action"
+OPEN_DOCUMENT_TAB "ACCESS_CONTROL_TAB"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_1_HIDDEN" "D-User8"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_1_HIDDEN" "Validation Review"
+CheckFormElementEqualsCurrentDate  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_1_HIDDEN" "1"
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "2"
+CLICK_ACTION  "Cancel"
+CHECK_ERRORS
+
+# #################################################################################################
+# TC_1.4: When using global Route action.
+# Expected Result(s): 
+#                  - Electronic signature section contains one record. 
+# #################################################################################################
+
+CREATE_NEW_DOCUMENT "VALIDATION_DOCUMENT" "VALIDATION_TEST_DRAFT"
+SetFormElement "VALIDATION_TITLE" "New document created to test the contents of Approvals Section"
+CLICK_ACTION "Save"
+CHECK_ERRORS
+StoreDocumentKey	"Route-Action"
+OPEN_DOCUMENT_TAB "ACCESS_CONTROL_TAB"
+CheckFormElementNotPresent   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_0_HIDDEN"
+CheckFormElementNotPresent   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_0_HIDDEN" 
+CheckFormElementNotPresent  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_0_HIDDEN"
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "0"
+
+CLICK_ACTION  "Cancel"
+CHECK_ERRORS
+
+# Route the document to the next phase using route action.
+
+SelectDocumentByKey "Route-Action"
+CLICK_ACTION "Route"
+ADD_USER_TO_NAMES_FIELD "GLOBAL_ROUTE_DIALOG_SELECTED_DOCUMENTS_INFO_GLOBAL_ROUTE_DIALOG_ASSIGN_TO_0" "D-User8"
+CLICK_ACTION "global_route_dialog_ok"
+SET_PASSWORD  "etq-user8"
+Submit
+CHECK_ERRORS
+
+# Checking the contents of approvals section.
+OpenDocumentByKey "Route-Action"
+OPEN_DOCUMENT_TAB	"ACCESS_CONTROL_TAB"
+CheckFormElementEquals  "ETQ$PHASE_TRACKING_ETQ$ASSIGNED_TO_0_HIDDEN" "D-User8"
+CheckFormElementEquals  "ETQ$PHASE_TRACKING_ETQ$PHASE_ID_0_HIDDEN" "Draft"
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "1"
+CLICK_ACTION  "Cancel"
+CHECK_ERRORS
+
+# #################################################################################################
+# TC_1.5: When route document using delegated user.
+# Expected Result(s): 
+#                  - Electronic signature contains one record. 
+# #################################################################################################
+# Precondition(s):
+#       - Create approved delegation document and use it to delegate user7 assignments to user8.  	                  													
+# #################################################################################################
+
+# Create delegation Document. 
+SWITCH_TO_USER7
+OPEN_APPLICATION	"DELEGATION"
+CREATE_NEW_DELEGATION "EtQ-User8" "Test Application for Validation"
+CLICK_ACTION "Save"
+StoreDocumentKey	"Delegate-User8"
+APPROVE_DELEGATION 
+
+SWITCH_TO_USER8
+OPEN_APPLICATION	"DELEGATION"
+OpenDocumentByKey	"Delegate-User8"
+ACTIVATE_DELEGATION
+
+# #################################################################################################
+# Start TC_1.5
+# #################################################################################################
+
+SWITCH_TO_USER7
+OPEN_APPLICATION "VALIDATION"
+CREATE_NEW_DOCUMENT "VALIDATION_DOCUMENT" "VALIDATION_TEST_DRAFT"
+SetFormElement "VALIDATION_TITLE" "When route document using delegated user"
+CLICK_ACTION "Save"
+CHECK_ERRORS
+StoreDocumentKey	"Routing-ByDelegation"
+OPEN_DOCUMENT_TAB "ACCESS_CONTROL_TAB"
+CheckFormElementNotPresent   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_0_HIDDEN"
+CheckFormElementNotPresent   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_0_HIDDEN" 
+CheckFormElementNotPresent  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_0_HIDDEN"
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "0"
+
+CLICK_ACTION  "Cancel"
+CHECK_ERRORS
+
+# Route document using user8.
+SWITCH_TO_USER8
+OPEN_APPLICATION	"VALIDATION"
+OpenDocumentByKey "Routing-ByDelegation"
+ClickLink "PhaseName_Validation_Review"
+ADD_USER_TO_NAMES_FIELD "PHASE_DIALOG_ASSIGN_TO"  "EtQ-User7"
+CLICK_ACTION "phase_dialog_ok"
+CHECK_ERRORS
+CheckTitleEquals	"Re-Authentication"
+SET_PASSWORD  "etq-user8"
+Submit
+CHECK_ERRORS
+
+# Checking the contents of Electronic signature section.
+SWITCH_TO_USER7
+OPEN_APPLICATION	"VALIDATION"
+OpenDocumentByKey "Routing-ByDelegation"
+OPEN_DOCUMENT_TAB	"ACCESS_CONTROL_TAB"
+CheckFormElementEquals  "ETQ$PHASE_TRACKING_ETQ$ASSIGNED_TO_0_HIDDEN" "D-User7"
+CheckFormElementEquals  "ETQ$PHASE_TRACKING_ETQ$PHASE_ID_0_HIDDEN" "Draft"
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "1"
+CLICK_ACTION  "Cancel"
+CHECK_ERRORS
+
+# #################################################################################################
+# TC_1.6: Check that eSignature section will be updated  when 
+#       "Update electronic signature section in the following phases" is empty
+# #################################################################################################
+# Precondition(s):
+#  - Enable "Force Authentication" in "VALIDATION_DOCUMENT" form setting
+#  - Select "Authenticate only when routing" radio button option	
+#  - Keep "ENGINE_FORM_APPROVAL_PHASES" field empty
+#  - Fill "ENGINE_FORM_HISTORY_PHASES" with Validation Review (VALIDATION_TEST_VALIDATION_REVIEW)
+#    and Initial Approval (VALIDATION_TEST_INITIAL_APPROVAL) phases
+#  - Select "Authenticate on every save" radio button option 	 											
+# #################################################################################################
+
+SWITCH_TO_ETQADMINISTRATOR
+OPEN_APPLICATION "ENGINE"
+OPEN_SETTING_DOCUMENT "ENGINE_FORM_SETTINGS"  "VALIDATION_DOCUMENT"
+OPEN_KEYWORD_DIALOG "ENGINE_FORM_APPROVAL_PHASES"
+REMOVE_ALL_KEYWORD_OPTIONS
+CLOSE_KEYWORD_DIALOG
+OPEN_KEYWORD_DIALOG	"ENGINE_FORM_HISTORY_PHASES"
+SELECT_MULTIPLE_KEYWORD_OPTION "Validation Review (VALIDATION_TEST_VALIDATION_REVIEW)"
+ADD_KEYWORD_OPTION
+SELECT_MULTIPLE_KEYWORD_OPTION  "Initial Approval (VALIDATION_TEST_INITIAL_APPROVAL)"
+ADD_KEYWORD_OPTION
+CLOSE_KEYWORD_DIALOG
+CLICK_ACTION  "Save"
+CHECK_ERRORS
+SelectRadioByDisplayName  "ENGINE_FORM_AUTHENTICATION_OPTIONS" "Authenticate on every save"
+CLICK_ACTION  "Save_&_Close"
+CHECK_ERRORS
+
+# #####################################################################################
+# Starting TC_1.6: Check phase approval when sending the document Forward, while 
+# the authentication is on save for all phases							 
+# Expected Result(s):							                                                                  
+#				eSignature section will be updated with User name, Phase name, and Date  																																																																									
+# #####################################################################################
+
+SWITCH_TO_USER7
+OPEN_HOME_PAGE
+OPEN_APPLICATION "VALIDATION"
+CREATE_NEW_DOCUMENT "VALIDATION_DOCUMENT" "VALIDATION_TEST_DRAFT"
+SetFormElement "VALIDATION_TITLE" "Check phase approval when sending the document Forward, while the authentication is on save"	"Sending-Forward-OnSave"
+CLICK_ACTION "Save"
+SET_PASSWORD "etq-user7"
+Submit
+CHECK_ERRORS
+StoreDocumentKey	"Sending-Forward-OnSave"
+
+# Check Electronic Signature section fields data 
+OPEN_DOCUMENT_TAB "ACCESS_CONTROL_TAB"
+CheckFormElementNotPresent  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_0_HIDDEN"
+CheckFormElementNotPresent  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_0_HIDDEN"
+CheckFormElementNotPresent "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_0_HIDDEN" 
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "0"
+ROUTE_TO_PHASE_WITH_AUTHENTICATION "PhaseName_Validation_Review"	"EtQ-User7" "etq-user7"
+
+# Check Electronic Signature subform fields data 
+OpenDocumentByKey "Sending-Forward-OnSave"
+OPEN_DOCUMENT_TAB "ACCESS_CONTROL_TAB"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_0_HIDDEN" "D-User7"
+CheckFormElementEquals   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_0_HIDDEN" "Draft"
+CheckFormElementEqualsCurrentDate  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_0_HIDDEN" "1"
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "1"
+CLICK_ACTION  "Cancel"
+CHECK_ERRORS
+
+# #################################################################################################
+# Set condition(s) back 																																			
+# #################################################################################################
+
+SET_AUDIT_TRAIL_TO_DEFAULT_WORKFLOW  "VALIDATION_DOCUMENT"      
+
+# Disable "Allow resend to users within the phase" option on "Validation Review" phase	
+OPEN_SETTING_DOCUMENT "ENGINE_PHASE_SETTINGS"  "VALIDATION_TEST_VALIDATION_REVIEW"
+OPEN_DOCUMENT_TAB "ROUTING_TAB"
+DESELECT_CHECKBOX "ENGINE_ALLOW_RESEND"
+CLICK_ACTION  "Save_&_Close"
+CHECK_ERRORS
+
+# Delete Validation documents
+SWITCH_TO_ETQADMINISTRATOR
+OPEN_APPLICATION	"VALIDATION"
+OpenDocumentByKey "Sending-Forward"
+CLICK_ACTION  "Delete"
+CHECK_ERRORS
+
+OpenDocumentByKey "Assign-NextPerson"
+CLICK_ACTION  "Delete"
+CHECK_ERRORS
+
+OpenDocumentByKey "Resend-Action"
+CLICK_ACTION  "Delete"
+CHECK_ERRORS
+
+OpenDocumentByKey "Route-Action"
+CLICK_ACTION  "Delete"
+CHECK_ERRORS
+
+OpenDocumentByKey "Routing-ByDelegation"
+CLICK_ACTION  "Delete"
+CHECK_ERRORS
+
+OpenDocumentByKey "Sending-Forward-OnSave"
+CLICK_ACTION  "Delete"
+CHECK_ERRORS
+
+OPEN_HOME_PAGE
+OPEN_APPLICATION	"DELEGATION"
+OpenDocumentByKey "Delegate-User8"
+CLICK_ACTION  "Delete"
+CHECK_ERRORS
+
+# #################################################################################################
+# TC_2: Check that eSignature section will be updated  when 
+#       "Update electronic signature section in the following phases" is populated with different phase
+# Expected Result(s):							                                                                  
+#				eSignature section will not be updated    	
+# #################################################################################################
+# Precondition(s):
+#  - Enable "Force Authentication" in "VALIDATION_DOCUMENT" form setting
+#  - Select "Authenticate only when routing" checkbox	
+#  - Add "Awaiting Release (VALIDATION_TEST_AWAITINGRELEASE)" phase to "ENGINE_FORM_APPROVAL_PHASES" field 	  	 											
+# #################################################################################################
+
+SWITCH_TO_USER1
+OPEN_APPLICATION "ENGINE"
+OPEN_SETTING_DOCUMENT "ENGINE_FORM_SETTINGS"  "VALIDATION_DOCUMENT"
+SelectOption "ENGINE_HISTORY_TYPE" "Force Authentication"
+SelectRadioByDisplayName  "ENGINE_FORM_AUTHENTICATION_OPTIONS" "Authenticate only when routing"
+
+OPEN_KEYWORD_DIALOG "ENGINE_FORM_APPROVAL_PHASES"
+SELECT_MULTIPLE_KEYWORD_OPTION "Awaiting Release (VALIDATION_TEST_AWAITINGRELEASE)"
+ADD_KEYWORD_OPTION
+CLOSE_KEYWORD_DIALOG
+
+CLICK_ACTION  "Save_&_Close"
+CHECK_ERRORS
+
+# #################################################################################################
+# TC_2.1: Check phase approval when sending the document Forward 							 
+																																																																								
+# #################################################################################################
+
+SWITCH_TO_USER7
+VALIDATION_CREATE_PENDING_DOCUMENT	"Check phase approval when sending the document Forward"	"Sending-Forward2"
+
+# Check Electronic Signature section fields data 
+OpenDocumentByKey "Sending-Forward2"
+OPEN_DOCUMENT_TAB "ACCESS_CONTROL_TAB"
+CheckFormElementNotPresent  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_0_HIDDEN"
+CheckFormElementNotPresent  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_0_HIDDEN"
+CheckFormElementNotPresent "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_0_HIDDEN" 
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "0"
+ROUTE_TO_PHASE_WITH_AUTHENTICATION "PhaseName_Validation_Review"	"EtQ-User7" "etq-user7"
+
+# Check Electronic Signature subform fields data 
+OpenDocumentByKey "Sending-Forward2"
+OPEN_DOCUMENT_TAB "ACCESS_CONTROL_TAB"
+CheckFormElementNotPresent   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_0_HIDDEN"
+CheckFormElementNotPresent   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_0_HIDDEN"
+CheckFormElementNotPresent  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_0_HIDDEN"
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "0"
+CLICK_ACTION  "Cancel"
+CHECK_ERRORS
+
+# #################################################################################################
+# TC_2.2: When using global Route action.
+# Expected Result(s): 
+#                  - Electronic signature section does not contain any record. 
+# #################################################################################################
+
+CREATE_NEW_DOCUMENT "VALIDATION_DOCUMENT" "VALIDATION_TEST_DRAFT"
+SetFormElement "VALIDATION_TITLE" "New document created to test the contents of Approvals Section"
+CLICK_ACTION "Save"
+CHECK_ERRORS
+StoreDocumentKey	"Route-Action2"
+OPEN_DOCUMENT_TAB "ACCESS_CONTROL_TAB"
+CheckFormElementNotPresent   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_0_HIDDEN"
+CheckFormElementNotPresent   "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_0_HIDDEN" 
+CheckFormElementNotPresent  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_DATE_0_HIDDEN"
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "0"
+
+CLICK_ACTION  "Cancel"
+CHECK_ERRORS
+
+# Route the document to the next phase using route action.
+
+SelectDocumentByKey "Route-Action2"
+CLICK_ACTION "Route"
+CHECK_ERRORS
+ADD_USER_TO_NAMES_FIELD "GLOBAL_ROUTE_DIALOG_SELECTED_DOCUMENTS_INFO_GLOBAL_ROUTE_DIALOG_ASSIGN_TO_0" "D-User8"
+CLICK_ACTION "global_route_dialog_ok"
+SET_PASSWORD  "etq-user8"
+Submit
+CHECK_ERRORS
+
+# Checking the contents of approvals section.
+OpenDocumentByKey "Route-Action2"
+OPEN_DOCUMENT_TAB	"ACCESS_CONTROL_TAB"
+CheckFormElementNotPresent  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_USER_0_HIDDEN"
+CheckFormElementNotPresent  "ETQ$APPROVALS_ETQ$APPROVALS_DIS_PHASE_0_HIDDEN"
+CHECK_NUMBER_OF_APPROVAL_SECTION_RECORDS "0"
+CLICK_ACTION  "Cancel"
+CHECK_ERRORS
+
+# #################################################################################################
+# Set condition(s) back 																																			
+# #################################################################################################
+
+SWITCH_TO_ETQADMINISTRATOR
+
+# Delete Validation documents
+OPEN_HOME_PAGE
+OPEN_APPLICATION	"VALIDATION"
+OpenDocumentByKey "Sending-Forward2"
+CLICK_ACTION  "Delete"
+CHECK_ERRORS
+
+OpenDocumentByKey "Route-Action2"
+CLICK_ACTION  "Delete"
+CHECK_ERRORS
+
+OPEN_APPLICATION "ENGINE"
+OPEN_SETTING_DOCUMENT "ENGINE_FORM_SETTINGS"  "VALIDATION_DOCUMENT"
+SelectOption "ENGINE_HISTORY_TYPE" "Force Authentication"
+SelectRadioByDisplayName  "ENGINE_FORM_AUTHENTICATION_OPTIONS" "Authenticate only when routing"
+OPEN_KEYWORD_DIALOG "ENGINE_FORM_APPROVAL_PHASES"
+REMOVE_ALL_KEYWORD_OPTIONS
+CLOSE_KEYWORD_DIALOG
+OPEN_KEYWORD_DIALOG	"ENGINE_FORM_HISTORY_PHASES"
+REMOVE_ALL_KEYWORD_OPTIONS
+CLOSE_KEYWORD_DIALOG
+CLICK_ACTION  "Save_&_Close"
+CHECK_ERRORS
+
+CLICK_ACTION  "LOGOUT"
+CHECK_ERRORS

@@ -1,0 +1,4 @@
+chapter_03_Local_TC_Generator/.env
+chapter_03_Local_TC_Generator/config.json
+__pycache__/
+.streamlit/
